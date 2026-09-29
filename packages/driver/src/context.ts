@@ -143,6 +143,9 @@ export type State = {
   __pendingWaitCancel?: () => void;
   __activeStagePosition?: StageDefinition;
   __overlaySvg?: SVGSVGElement;
+  // Marks the element this instance highlighted, so a stale destroy can
+  // unmark only its own target.
+  __instanceId?: string;
 
   __events?: {
     onKeyup: (e: KeyboardEvent) => void;

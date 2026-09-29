@@ -1,11 +1,16 @@
 import { destroyPopover, Popover } from "./popover";
 import { destroyOverlay } from "./overlay";
 import { destroyEvents, initEvents, requireRefresh } from "./events";
-import { Config, createContext, DriverHook } from "./context";
-import { destroyHighlight, highlight } from "./highlight";
+import { Config, Context, createContext, DriverHook } from "./context";
+import { destroyHighlight, highlight, releaseHighlight } from "./highlight";
 import { findReachableIndex, resolveNextHook, resolvePrevHook, resolveTourStep, shouldSkipStep } from "./step";
 import { resolveElement } from "./utils";
 import "./driver.css";
+
+// The instance that last mounted the shared overlay. A destroy on any other
+// instance must not strip that overlay.
+let mountedContext: Context | null = null;
+let nextInstanceId = 0;
 
 // Re-export the public types so they remain part of the package's type surface.
 export type { Config, DriverHook, State } from "./context";
@@ -52,6 +57,7 @@ export interface Driver {
 
 export function driver(options: Config = {}): Driver {
   const ctx = createContext(options);
+  const instanceId = `driver-${++nextInstanceId}`;
 
   function handleClose() {
     if (!ctx.getConfig("allowClose")) {
@@ -210,7 +216,19 @@ export function driver(options: Config = {}): Driver {
       return;
     }
 
+    // Stop a previous instance's animation from painting over this one.
+    if (mountedContext && mountedContext !== ctx) {
+      const pendingFrame = mountedContext.getState("__resizeTimeout");
+      if (pendingFrame) {
+        window.cancelAnimationFrame(pendingFrame);
+      }
+      mountedContext.setState("__transitionCallback", undefined);
+      mountedContext.setState("__resizeTimeout", undefined);
+    }
+
     ctx.setState("isInitialized", true);
+    ctx.setState("__instanceId", instanceId);
+    mountedContext = ctx;
     document.body.classList.add("driver-active", ctx.getConfig("animate") ? "driver-fade" : "driver-simple");
     if (!ctx.getConfig("allowScroll")) {
       document.body.classList.add("driver-no-scroll");
@@ -328,16 +346,23 @@ export function driver(options: Config = {}): Driver {
   }
 
   function destroy(withOnDestroyStartedHook = true) {
+    // Already torn down, or never started. Touching the document here would
+    // remove the overlay that belongs to a different instance (#504).
+    if (!ctx.getState("isInitialized")) {
+      return;
+    }
+
     const activeElement = ctx.getState("__activeElement");
     const activeStep = ctx.getState("__activeStep");
-
     const activeOnDestroyed = ctx.getState("__activeOnDestroyed");
+    const ownsPage = mountedContext === ctx;
 
     const onDestroyStarted = ctx.getConfig("onDestroyStarted");
     // `onDestroyStarted` is used to confirm the exit of tour. If we trigger
     // the hook for when user calls `destroy`, driver will get into infinite loop
-    // not causing tour to be destroyed.
-    if (withOnDestroyStartedHook && onDestroyStarted) {
+    // not causing tour to be destroyed. A superseded instance skips the hook:
+    // the visible tour is no longer this one.
+    if (ownsPage && withOnDestroyStartedHook && onDestroyStarted) {
       const isActiveDummyElement = !activeElement || activeElement?.id === "driver-dummy-element";
       onDestroyStarted(isActiveDummyElement ? undefined : activeElement, activeStep!, ctx.getHookOpts());
       return;
@@ -346,13 +371,20 @@ export function driver(options: Config = {}): Driver {
     const onDeselected = activeStep?.onDeselected || ctx.getConfig("onDeselected");
     const onDestroyed = ctx.getConfig("onDestroyed");
 
-    document.body.classList.remove("driver-active", "driver-fade", "driver-simple", "driver-no-scroll");
-    document.body.style.removeProperty("--driver-animation-duration");
+    if (ownsPage) {
+      document.body.classList.remove("driver-active", "driver-fade", "driver-simple", "driver-no-scroll");
+      document.body.style.removeProperty("--driver-animation-duration");
+      destroyHighlight();
+      if (mountedContext === ctx) {
+        mountedContext = null;
+      }
+    } else {
+      releaseHighlight(activeElement, ctx.getState("__instanceId"));
+    }
 
     cancelElementWait();
     destroyEvents(ctx);
     destroyPopover(ctx.getState("popover"));
-    destroyHighlight();
     destroyOverlay(ctx);
     ctx.resetEmitter();
 
@@ -371,7 +403,7 @@ export function driver(options: Config = {}): Driver {
       }
     }
 
-    if (activeOnDestroyed) {
+    if (ownsPage && activeOnDestroyed) {
       (activeOnDestroyed as HTMLElement).focus();
     }
   }
@@ -385,8 +417,15 @@ export function driver(options: Config = {}): Driver {
     },
     setConfig: ctx.setConfig,
     setSteps: (steps: DriveStep[]) => {
-      cancelElementWait();
-      ctx.resetState();
+      // resetState() drops isInitialized but used to leave the overlay mounted.
+      // Tear the overlay down first so a later destroy() is not a no-op that
+      // leaks it, and so it cannot belong to a different instance.
+      if (ctx.getState("isInitialized")) {
+        destroy(false);
+      } else {
+        cancelElementWait();
+        ctx.resetState();
+      }
       ctx.setConfig({
         ...ctx.getConfig(),
         steps,

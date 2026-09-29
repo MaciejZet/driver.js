@@ -167,19 +167,46 @@ function transferHighlight(ctx: Context, toElement: Element, toStep: DriveStep) 
   toElement.setAttribute("aria-haspopup", "dialog");
   toElement.setAttribute("aria-expanded", "true");
   toElement.setAttribute("aria-controls", "driver-popover-content");
+  const instanceId = ctx.getState("__instanceId");
+  if (instanceId) {
+    toElement.setAttribute("data-driver-owner", instanceId);
+  }
+}
+
+function unmarkHighlightedElement(element: Element) {
+  const parent = element.parentElement;
+  if (parent && parent !== document.body) {
+    parent.classList.remove("driver-active-element-parent", "driver-active-element-parent-no-scroll");
+  }
+
+  element.classList.remove("driver-active-element", "driver-no-interaction");
+  element.removeAttribute("aria-haspopup");
+  element.removeAttribute("aria-expanded");
+  element.removeAttribute("aria-controls");
+  element.removeAttribute("data-driver-owner");
+}
+
+// Drops the highlight class from this instance's element only. A later tour
+// may have taken the same node; its owner id then no longer matches.
+export function releaseHighlight(element: Element | undefined, instanceId: string | undefined) {
+  if (!element || !instanceId) {
+    return;
+  }
+  if (element.getAttribute("data-driver-owner") !== instanceId) {
+    return;
+  }
+
+  if (element.id === "driver-dummy-element") {
+    element.remove();
+    return;
+  }
+
+  unmarkHighlightedElement(element);
 }
 
 export function destroyHighlight() {
   document.getElementById("driver-dummy-element")?.remove();
   document.querySelectorAll(".driver-active-element").forEach(element => {
-    const parent = element.parentElement;
-    if (parent && parent !== document.body) {
-      parent.classList.remove("driver-active-element-parent", "driver-active-element-parent-no-scroll");
-    }
-
-    element.classList.remove("driver-active-element", "driver-no-interaction");
-    element.removeAttribute("aria-haspopup");
-    element.removeAttribute("aria-expanded");
-    element.removeAttribute("aria-controls");
+    unmarkHighlightedElement(element);
   });
 }
