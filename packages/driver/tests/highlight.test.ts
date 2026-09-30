@@ -192,3 +192,100 @@ describe("step data", () => {
     expect(step.data).toEqual({ id: 7 });
   });
 });
+
+describe("aria attributes on the highlighted element", () => {
+  it("points the active element at the popover, then restores the previous values", () => {
+    document.body.innerHTML = `
+      <button id="menu-btn" type="button" aria-controls="menu" aria-expanded="false" aria-haspopup="true">Menu</button>
+    `;
+    const d = createDriver({ animate: false, steps: [{ element: "#menu-btn", popover: { title: "Menu" } }] });
+    d.drive();
+
+    const button = document.getElementById("menu-btn");
+    expect(button?.getAttribute("aria-controls")).toBe("driver-popover-content");
+    expect(button?.getAttribute("aria-expanded")).toBe("true");
+    expect(button?.getAttribute("aria-haspopup")).toBe("dialog");
+
+    d.destroy();
+
+    expect(button?.getAttribute("aria-controls")).toBe("menu");
+    expect(button?.getAttribute("aria-expanded")).toBe("false");
+    expect(button?.getAttribute("aria-haspopup")).toBe("true");
+  });
+
+  it("drops the tour attributes when the element had none", () => {
+    document.body.innerHTML = `<button id="plain" type="button">Plain</button>`;
+    const d = createDriver({ animate: false, steps: [{ element: "#plain", popover: { title: "Plain" } }] });
+    d.drive();
+    d.destroy();
+
+    const button = document.getElementById("plain");
+    expect(button?.hasAttribute("aria-controls")).toBe(false);
+    expect(button?.hasAttribute("aria-expanded")).toBe(false);
+    expect(button?.hasAttribute("aria-haspopup")).toBe(false);
+  });
+
+  it("restores the element left behind when the highlight moves", () => {
+    document.body.innerHTML = `
+      <button id="first" type="button" aria-controls="panel-a" aria-expanded="false">First</button>
+      <button id="second" type="button" aria-haspopup="menu">Second</button>
+    `;
+    const d = createDriver({
+      animate: false,
+      steps: [
+        { element: "#first", popover: { title: "First" } },
+        { element: "#second", popover: { title: "Second" } },
+      ],
+    });
+    d.drive();
+    navButton("next")?.click();
+
+    const first = document.getElementById("first");
+    const second = document.getElementById("second");
+    expect(first?.getAttribute("aria-controls")).toBe("panel-a");
+    expect(first?.getAttribute("aria-expanded")).toBe("false");
+    expect(first?.hasAttribute("aria-haspopup")).toBe(false);
+    expect(second?.getAttribute("aria-controls")).toBe("driver-popover-content");
+    expect(second?.getAttribute("aria-expanded")).toBe("true");
+    expect(second?.getAttribute("aria-haspopup")).toBe("dialog");
+
+    navButton("prev")?.click();
+
+    expect(first?.getAttribute("aria-controls")).toBe("driver-popover-content");
+    expect(second?.getAttribute("aria-haspopup")).toBe("menu");
+    expect(second?.hasAttribute("aria-controls")).toBe(false);
+    expect(second?.hasAttribute("aria-expanded")).toBe(false);
+  });
+
+  it("leaves attributes alone on an element the tour never highlights", () => {
+    document.body.innerHTML = `
+      <button id="target" type="button">Target</button>
+      <button id="other" type="button" aria-controls="sidebar" aria-expanded="false">Other</button>
+    `;
+    const d = createDriver({ animate: false, steps: [{ element: "#target", popover: { title: "Target" } }] });
+    d.drive();
+
+    const other = document.getElementById("other");
+    expect(other?.getAttribute("aria-controls")).toBe("sidebar");
+    expect(other?.getAttribute("aria-expanded")).toBe("false");
+
+    d.destroy();
+
+    expect(other?.getAttribute("aria-controls")).toBe("sidebar");
+    expect(other?.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("restores the same element again after a later tour", () => {
+    document.body.innerHTML = `<button id="menu-btn" type="button" aria-controls="menu">Menu</button>`;
+    const d = createDriver({ animate: false, steps: [{ element: "#menu-btn", popover: { title: "Menu" } }] });
+    d.drive();
+    d.destroy();
+    d.drive();
+
+    expect(document.getElementById("menu-btn")?.getAttribute("aria-controls")).toBe("driver-popover-content");
+
+    d.destroy();
+
+    expect(document.getElementById("menu-btn")?.getAttribute("aria-controls")).toBe("menu");
+  });
+});
