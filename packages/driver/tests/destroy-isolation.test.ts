@@ -79,11 +79,19 @@ describe("destroy isolation (#504)", () => {
     // The highlight object is still active. That is the timeout in #504:
     // isActive() is true, so the caller does call destroy().
     expect(demo.isActive()).toBe(true);
+    const popovers = document.querySelectorAll(".driver-popover");
+    const overlays = document.querySelectorAll(".driver-overlay");
+    const livePopover = popovers[popovers.length - 1];
+    const liveOverlay = overlays[overlays.length - 1];
     demo.destroy();
 
     expect(demo.isActive()).toBe(false);
     expect(demoDestroyed).toHaveBeenCalledTimes(1);
     expect(tourDestroyed).not.toHaveBeenCalled();
+    const remainingPopovers = document.querySelectorAll(".driver-popover");
+    const remainingOverlays = document.querySelectorAll(".driver-overlay");
+    expect(remainingPopovers[remainingPopovers.length - 1]).toBe(livePopover);
+    expect(remainingOverlays[remainingOverlays.length - 1]).toBe(liveOverlay);
     expect(document.querySelector("#card-1")?.classList.contains("driver-active-element")).toBe(false);
     expectTourIntact(tour);
   });
