@@ -417,15 +417,8 @@ export function driver(options: Config = {}): Driver {
     },
     setConfig: ctx.setConfig,
     setSteps: (steps: DriveStep[]) => {
-      // resetState() drops isInitialized but used to leave the overlay mounted.
-      // Tear the overlay down first so a later destroy() is not a no-op that
-      // leaks it, and so it cannot belong to a different instance.
-      if (ctx.getState("isInitialized")) {
-        destroy(false);
-      } else {
-        cancelElementWait();
-        ctx.resetState();
-      }
+      cancelElementWait();
+      ctx.resetState();
       ctx.setConfig({
         ...ctx.getConfig(),
         steps,

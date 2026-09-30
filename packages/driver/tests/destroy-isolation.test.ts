@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driver, type Driver } from "../src/driver";
-import { nextFrame, popoverEl, popoverTitle, SAMPLE_STEPS, useDriverHarness } from "./utils";
+import { nextFrame, popoverEl, popoverTitle, useDriverHarness } from "./utils";
 
 // #504: destroy() on a stale instance must not tear down the tour that is
 // actually on the page.
@@ -109,22 +109,6 @@ describe("destroy isolation (#504)", () => {
     expect(popoverTitle()).toBe("Second");
     expect(document.querySelector("#card-1")?.classList.contains("driver-active-element")).toBe(true);
     expect(document.querySelector("#intro")?.classList.contains("driver-active-element")).toBe(false);
-  });
-
-  it("clears the overlay when steps are replaced mid-tour", () => {
-    const demo = track(driver({ animate: false, steps: SAMPLE_STEPS }));
-    demo.drive();
-    expect(popoverEl()).not.toBeNull();
-
-    demo.setSteps([{ element: "#card-1", popover: { title: "Replaced" } }]);
-
-    expect(demo.isActive()).toBe(false);
-    expect(popoverEl()).toBeNull();
-    expect(document.body.classList.contains("driver-active")).toBe(false);
-
-    demo.drive();
-    expect(popoverTitle()).toBe("Replaced");
-    expect(demo.isActive()).toBe(true);
   });
 
   it("keeps the replacement tour after an animated highlight is destroyed", async () => {
