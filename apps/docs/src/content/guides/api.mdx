@@ -74,7 +74,7 @@ driverObj.highlight({
 driverObj.destroy(); // Destroy the tour
 ```
 
-> Each `driver()` call returns its own independent instance. You can create as many as you need on the same page, and their configuration, steps, and state never overlap.
+> Each `driver()` call returns its own independent instance. You can create as many as you need on the same page, and their configuration, steps, and state never overlap. Only one instance can be on screen at a time, so starting a tour or highlight on one instance closes whichever instance is currently active.
 
 ## Hints
 
