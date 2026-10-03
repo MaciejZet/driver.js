@@ -423,6 +423,7 @@ export function hints(config: HintsConfig = {}): Hints {
       progressText: "",
       nextBtnText: hintPopover.buttonText ?? currentConfig.buttonText ?? "Got it",
       prevBtnText: "",
+      closeBtnLabel: "Close",
 
       popoverClass: `driver-hint-popover ${hintPopover.popoverClass || currentConfig.popoverClass || ""}`.trim(),
 

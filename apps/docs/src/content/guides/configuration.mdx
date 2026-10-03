@@ -110,6 +110,9 @@ type Config = {
   prevBtnText?: string;
   doneBtnText?: string;
 
+  // Screen reader label of the close button. Defaults to "Close".
+  closeBtnLabel?: string;
+
   // Called after the popover is rendered.
   // PopoverDOM is an object with references to
   // the popover DOM elements such as buttons
@@ -246,6 +249,9 @@ type Popover = {
   nextBtnText?: string;
   prevBtnText?: string;
   doneBtnText?: string;
+
+  // Screen reader label of the close button. Defaults to "Close".
+  closeBtnLabel?: string;
 
   // Whether to show the progress text in popover.
   showProgress?: boolean;

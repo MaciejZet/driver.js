@@ -147,6 +147,7 @@ function resolveStepPopover(ctx: Context, element: Element, step: DriveStep): Po
     progressText: popover.progressText ?? (ctx.getConfig("progressText") || DEFAULT_PROGRESS_TEXT),
     nextBtnText: popover.nextBtnText ?? (ctx.getConfig("nextBtnText") || "Next"),
     prevBtnText: popover.prevBtnText ?? (ctx.getConfig("prevBtnText") || "Previous"),
+    closeBtnLabel: popover.closeBtnLabel ?? (ctx.getConfig("closeBtnLabel") || "Close"),
 
     doneButton: isDoneStep,
 

@@ -59,6 +59,7 @@ export type Config = {
   nextBtnText?: string;
   prevBtnText?: string;
   doneBtnText?: string;
+  closeBtnLabel?: string;
 
   // Called after the popover is rendered
   onPopoverRender?: (popover: PopoverDOM, opts: HookOpts) => void;
