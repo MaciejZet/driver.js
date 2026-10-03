@@ -5,34 +5,32 @@ import { hidePopover } from "./popover";
 import { renderStepPopover, repositionStepPopover } from "./step";
 import { bringInView, isScrollable, resolveElement } from "./utils";
 
-const TOUR_ARIA_ATTRIBUTES: Readonly<Record<string, string>> = {
+const POPOVER_ARIA: Record<string, string> = {
   "aria-haspopup": "dialog",
   "aria-expanded": "true",
   "aria-controls": "driver-popover-content",
 };
 
-const ariaBeforeTour = new WeakMap<Element, Map<string, string | null>>();
+const originalAria = new WeakMap<Element, Record<string, string | null>>();
 
-function rememberAria(element: Element) {
-  if (ariaBeforeTour.has(element)) {
-    return;
+function setPopoverAria(element: Element) {
+  if (!originalAria.has(element)) {
+    const original = Object.fromEntries(Object.keys(POPOVER_ARIA).map(name => [name, element.getAttribute(name)]));
+    originalAria.set(element, original);
   }
 
-  const previous = new Map<string, string | null>();
-  for (const name of Object.keys(TOUR_ARIA_ATTRIBUTES)) {
-    previous.set(name, element.getAttribute(name));
+  for (const [name, value] of Object.entries(POPOVER_ARIA)) {
+    element.setAttribute(name, value);
   }
-
-  ariaBeforeTour.set(element, previous);
 }
 
 function restoreAria(element: Element) {
-  const previous = ariaBeforeTour.get(element);
-  if (!previous) {
+  const original = originalAria.get(element);
+  if (!original) {
     return;
   }
 
-  for (const [name, value] of previous) {
+  for (const [name, value] of Object.entries(original)) {
     if (value === null) {
       element.removeAttribute(name);
     } else {
@@ -40,15 +38,7 @@ function restoreAria(element: Element) {
     }
   }
 
-  ariaBeforeTour.delete(element);
-}
-
-function applyTourAria(element: Element) {
-  rememberAria(element);
-
-  for (const [name, value] of Object.entries(TOUR_ARIA_ATTRIBUTES)) {
-    element.setAttribute(name, value);
-  }
+  originalAria.delete(element);
 }
 
 function mountDummyElement(): Element {
@@ -191,15 +181,9 @@ function transferHighlight(ctx: Context, toElement: Element, toStep: DriveStep) 
   });
 
   document.querySelectorAll(".driver-active-element").forEach(element => {
-    if (element === toElement) {
-      return;
-    }
-
     element.classList.remove("driver-active-element", "driver-no-interaction");
     restoreAria(element);
   });
-
-  toElement.classList.remove("driver-no-interaction");
 
   const disableActiveInteraction = toStep.disableActiveInteraction ?? ctx.getConfig("disableActiveInteraction");
   if (disableActiveInteraction) {
@@ -216,7 +200,7 @@ function transferHighlight(ctx: Context, toElement: Element, toStep: DriveStep) 
   }
 
   toElement.classList.add("driver-active-element");
-  applyTourAria(toElement);
+  setPopoverAria(toElement);
 }
 
 export function destroyHighlight() {

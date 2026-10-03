@@ -288,4 +288,23 @@ describe("aria attributes on the highlighted element", () => {
 
     expect(document.getElementById("menu-btn")?.getAttribute("aria-controls")).toBe("menu");
   });
+
+  it("keeps the original values when two steps highlight the same element", () => {
+    document.body.innerHTML = `<button id="menu-btn" type="button" aria-controls="menu">Menu</button>`;
+    const d = createDriver({
+      animate: false,
+      steps: [
+        { element: "#menu-btn", popover: { title: "One" } },
+        { element: "#menu-btn", popover: { title: "Two" } },
+      ],
+    });
+    d.drive();
+    navButton("next")?.click();
+
+    expect(document.getElementById("menu-btn")?.getAttribute("aria-controls")).toBe("driver-popover-content");
+
+    d.destroy();
+
+    expect(document.getElementById("menu-btn")?.getAttribute("aria-controls")).toBe("menu");
+  });
 });
