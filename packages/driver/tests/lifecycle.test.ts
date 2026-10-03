@@ -188,3 +188,45 @@ describe("destroy on an inactive instance", () => {
     expect(document.querySelector("#card-1")?.classList.contains("driver-active-element")).toBe(true);
   });
 });
+
+describe("one active instance at a time", () => {
+  it("tears down the active instance when another one starts", async () => {
+    const onDestroyed = vi.fn();
+    const onDestroyStarted = vi.fn();
+    const hint = createDriver({ animate: false, onDestroyed, onDestroyStarted });
+    hint.highlight({ element: "#intro", popover: { title: "Hint" } });
+    await nextFrame();
+
+    const tour = createDriver({ animate: false, steps: [{ element: "#card-1", popover: { title: "Tour" } }] });
+    tour.drive();
+
+    expect(hint.isActive()).toBe(false);
+    expect(onDestroyed).toHaveBeenCalledTimes(1);
+    expect(onDestroyStarted).not.toHaveBeenCalled();
+    expect(document.querySelectorAll(".driver-popover")).toHaveLength(1);
+    expect(document.querySelector("#intro")?.classList.contains("driver-active-element")).toBe(false);
+  });
+
+  it("keeps the new tour when the replaced instance is destroyed later", () => {
+    const hint = createDriver({ animate: false });
+    hint.highlight({ element: "#intro", popover: { title: "Hint" } });
+
+    const tour = createDriver({ animate: false, steps: [{ element: "#card-1", popover: { title: "Tour" } }] });
+    tour.drive();
+    hint.destroy();
+
+    expect(tour.isActive()).toBe(true);
+    expect(popoverTitle()).toBe("Tour");
+    expect(document.body.classList.contains("driver-active")).toBe(true);
+    expect(document.querySelector("#card-1")?.classList.contains("driver-active-element")).toBe(true);
+  });
+
+  it("does not tear itself down when moving between its own steps", () => {
+    const d = createDriver({ animate: false, steps: SAMPLE_STEPS });
+    d.drive();
+    d.moveNext();
+
+    expect(d.isActive()).toBe(true);
+    expect(d.getActiveIndex()).toBe(1);
+  });
+});

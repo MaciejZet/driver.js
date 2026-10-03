@@ -9,7 +9,7 @@ import { CodeSample } from "../../components/CodeSample.tsx";
 
 Driver.js is built to be highly configurable. You can configure the driver globally, or per step. You can also configure the driver on the fly, while it's running.
 
-> Configuration, steps, and state belong to the specific `driver()` instance you set them on. Each call to `driver()` is independent, so you can keep several instances on the same page and configuring or driving one never affects another.
+> Configuration, steps, and state belong to the specific `driver()` instance you set them on. Each call to `driver()` is independent, so you can keep several instances on the same page and configuring one never affects another. Only one instance is shown at a time: driving or highlighting with one closes any other active instance.
 
 > Driver.js is written in TypeScript. Configuration options are mostly self-explanatory. Also, if you're using an IDE like WebStorm or VSCode, you'll get autocomplete and documentation for all the configuration options.
 

@@ -7,6 +7,8 @@ import { findReachableIndex, resolveNextHook, resolvePrevHook, resolveTourStep, 
 import { resolveElement } from "./utils";
 import "./driver.css";
 
+let teardownActive: (() => void) | undefined;
+
 // Re-export the public types so they remain part of the package's type surface.
 export type { Config, DriverHook, State } from "./context";
 export type { StageDefinition } from "./stage";
@@ -52,6 +54,7 @@ export interface Driver {
 
 export function driver(options: Config = {}): Driver {
   const ctx = createContext(options);
+  const teardown = () => destroy(false);
 
   function handleClose() {
     if (!ctx.getConfig("allowClose")) {
@@ -210,6 +213,11 @@ export function driver(options: Config = {}): Driver {
       return;
     }
 
+    if (teardownActive && teardownActive !== teardown) {
+      teardownActive();
+    }
+    teardownActive = teardown;
+
     ctx.setState("isInitialized", true);
     document.body.classList.add("driver-active", ctx.getConfig("animate") ? "driver-fade" : "driver-simple");
     if (!ctx.getConfig("allowScroll")) {
@@ -328,8 +336,6 @@ export function driver(options: Config = {}): Driver {
   }
 
   function destroy(withOnDestroyStartedHook = true) {
-    // Teardown touches shared document state, so an inactive instance must not
-    // run it or it would wipe another instance's tour (#504).
     if (!ctx.getState("isInitialized")) {
       return;
     }
@@ -347,6 +353,10 @@ export function driver(options: Config = {}): Driver {
       const isActiveDummyElement = !activeElement || activeElement?.id === "driver-dummy-element";
       onDestroyStarted(isActiveDummyElement ? undefined : activeElement, activeStep!, ctx.getHookOpts());
       return;
+    }
+
+    if (teardownActive === teardown) {
+      teardownActive = undefined;
     }
 
     const onDeselected = activeStep?.onDeselected || ctx.getConfig("onDeselected");
