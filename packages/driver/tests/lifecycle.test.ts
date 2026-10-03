@@ -143,3 +143,48 @@ describe("dummy-element hooks", () => {
     expect(onDestroyStarted.mock.calls[0][0]).toBeUndefined();
   });
 });
+
+describe("destroy on an inactive instance", () => {
+  function expectTourIntact() {
+    expect(popoverTitle()).toBe("Tour");
+    expect(document.body.classList.contains("driver-active")).toBe(true);
+    expect(document.querySelector("#card-1")?.classList.contains("driver-active-element")).toBe(true);
+  }
+
+  it("leaves another tour alone when destroyed twice", async () => {
+    const onDestroyed = vi.fn();
+    const hint = createDriver({ animate: false, onDestroyed });
+    hint.highlight({ element: "#intro", popover: { title: "Hint" } });
+    await nextFrame();
+    hint.destroy();
+
+    const tour = createDriver({ animate: false, steps: [{ element: "#card-1", popover: { title: "Tour" } }] });
+    tour.drive();
+    hint.destroy();
+
+    expect(tour.isActive()).toBe(true);
+    expect(onDestroyed).toHaveBeenCalledTimes(1);
+    expectTourIntact();
+  });
+
+  it("leaves another tour alone when it never started", () => {
+    const idle = createDriver({ animate: false });
+    const tour = createDriver({ animate: false, steps: [{ element: "#card-1", popover: { title: "Tour" } }] });
+    tour.drive();
+    idle.destroy();
+
+    expect(tour.isActive()).toBe(true);
+    expectTourIntact();
+  });
+
+  it("can highlight again after destroy", () => {
+    const d = createDriver({ animate: false });
+    d.highlight({ element: "#intro", popover: { title: "First" } });
+    d.destroy();
+    d.highlight({ element: "#card-1", popover: { title: "Second" } });
+
+    expect(d.isActive()).toBe(true);
+    expect(popoverTitle()).toBe("Second");
+    expect(document.querySelector("#card-1")?.classList.contains("driver-active-element")).toBe(true);
+  });
+});

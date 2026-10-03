@@ -328,6 +328,12 @@ export function driver(options: Config = {}): Driver {
   }
 
   function destroy(withOnDestroyStartedHook = true) {
+    // Teardown touches shared document state, so an inactive instance must not
+    // run it or it would wipe another instance's tour (#504).
+    if (!ctx.getState("isInitialized")) {
+      return;
+    }
+
     const activeElement = ctx.getState("__activeElement");
     const activeStep = ctx.getState("__activeStep");
 
